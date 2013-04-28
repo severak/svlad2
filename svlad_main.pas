@@ -61,12 +61,10 @@ begin
 end;
 
 procedure TForm1.MenuFileOpenClick(Sender: TObject);
-var FName : String;
 begin
   if OpenDialogTable.Execute then
   begin
-    FName := OpenDialogTable.FileName;
-    Grid.LoadFromCSVFile(FName);
+    Grid.LoadFromCSVFile(OpenDialogTable.FileName);
   end;
 end;
 
