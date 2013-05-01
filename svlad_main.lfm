@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 327
+  Left = 309
   Height = 400
-  Top = 114
+  Top = 147
   Width = 500
   Caption = 'Svlad'
   ClientHeight = 380
@@ -18,13 +18,14 @@ object Form1: TForm1
     Align = alBottom
     BorderSpacing.Around = 2
     Constraints.MaxHeight = 98
-    Font.Name = 'GNUTypewriter'
     Lines.Strings = (
       ''
     )
     ParentFont = False
     PopupMenu = PopupMenu1
+    ScrollBars = ssAutoBoth
     TabOrder = 0
+    WantTabs = True
   end
   object Grid: TStringGrid
     AnchorSideBottom.Control = Query
@@ -41,43 +42,70 @@ object Form1: TForm1
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
     RowCount = 1024
     TabOrder = 1
-    OnEditingDone = GridEditingDone
     OnSetEditText = GridSetEditText
   end
   object PopupMenu1: TPopupMenu
     left = 136
     top = 310
-    object MenuItem1: TMenuItem
+    object PopupQueryRun: TMenuItem
       Caption = 'Run'
-      OnClick = MenuItem1Click
+      OnClick = PopupQueryRunClick
     end
-    object MenuItem2: TMenuItem
+    object PopupQueryClear: TMenuItem
       Caption = 'Clear'
-      OnClick = MenuItem2Click
+      OnClick = PopupQueryClearClick
+    end
+    object PopupQueryOpen: TMenuItem
+      Caption = 'Open'
+      OnClick = PopupQueryOpenClick
+    end
+    object PopupQuerySave: TMenuItem
+      Caption = 'Save'
+      OnClick = PopupQuerySaveClick
     end
   end
   object MainMenu: TMainMenu
     left = 184
     top = 56
     object MenuFile: TMenuItem
-      Caption = 'File'
-      OnClick = MenuFileClick
-      object MenuFileOpen: TMenuItem
-        Caption = 'Open'
-        OnClick = MenuFileOpenClick
+      Caption = 'Sheet'
+      object MenuSheetClear: TMenuItem
+        Caption = 'Clear'
+        OnClick = MenuSheetClearClick
       end
-      object MenuFileSave: TMenuItem
+      object MenuSheetOpen: TMenuItem
+        Caption = 'Open'
+        OnClick = MenuSheetOpenClick
+      end
+      object MenuSheetSave: TMenuItem
         Caption = 'Save'
-        OnClick = MenuFileSaveClick
+        OnClick = MenuSheetSaveClick
       end
     end
   end
   object OpenDialogTable: TOpenDialog
+    DefaultExt = '.tsv'
+    Filter = 'TSV|*.tsv|CSV|*.csv'
     left = 88
     top = 186
   end
   object SaveDialogTable: TSaveDialog
+    DefaultExt = '.tsv'
+    Filter = 'TSV|*.tsv|CSV|*.csv'
+    Options = [ofOverwritePrompt, ofEnableSizing, ofViewDetail]
     left = 159
     top = 186
+  end
+  object OpenDialogQuery: TOpenDialog
+    Filter = 'lua|*.lua|txt|*.txt|all files|*.*'
+    left = 244
+    top = 330
+  end
+  object SaveDialogQuery: TSaveDialog
+    DefaultExt = '.lua'
+    Filter = 'lua|*.lua|txt|*.txt|all files|*.*'
+    Options = [ofOverwritePrompt, ofEnableSizing, ofViewDetail]
+    left = 304
+    top = 330
   end
 end
