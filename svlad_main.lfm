@@ -39,7 +39,10 @@ object Form1: TForm1
     ColCount = 255
     FixedCols = 0
     FixedRows = 0
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
+    Flat = True
+    HeaderHotZones = [gzFixedCols, gzFixedRows]
+    HeaderPushZones = [gzFixedCols, gzFixedRows]
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
     RowCount = 1024
     TabOrder = 1
     OnSetEditText = GridSetEditText
@@ -81,6 +84,21 @@ object Form1: TForm1
         Caption = 'Save'
         OnClick = MenuSheetSaveClick
       end
+      object MenuSheetSeparator: TMenuItem
+        Caption = '-'
+      end
+      object MenuSheetFixedRow: TMenuItem
+        Caption = 'Fixed row'
+        OnClick = MenuSheetFixedRowClick
+      end
+      object MenuSheetFixedCol: TMenuItem
+        Caption = 'Fixed col'
+        OnClick = MenuSheetFixedColClick
+      end
+    end
+    object MenuAbout: TMenuItem
+      Caption = 'About'
+      OnClick = MenuAboutClick
     end
   end
   object OpenDialogTable: TOpenDialog

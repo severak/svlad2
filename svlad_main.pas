@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Menus, Grids, lua52, CSVDocument;
+  Menus, Grids, PairSplitter, lua52, CSVDocument;
 
 type
 
@@ -14,6 +14,10 @@ type
 
   TForm1 = class(TForm)
     MainMenu: TMainMenu;
+    MenuAbout: TMenuItem;
+    MenuSheetFixedCol: TMenuItem;
+    MenuSheetSeparator: TMenuItem;
+    MenuSheetFixedRow: TMenuItem;
     PopupQueryRun: TMenuItem;
     PopupQueryClear: TMenuItem;
     MenuFile: TMenuItem;
@@ -33,7 +37,10 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure GridSetEditText(Sender: TObject; ACol, ARow: integer;
       const Value: string);
+    procedure MenuAboutClick(Sender: TObject);
     procedure MenuSheetClearClick(Sender: TObject);
+    procedure MenuSheetFixedColClick(Sender: TObject);
+    procedure MenuSheetFixedRowClick(Sender: TObject);
     procedure MenuSheetOpenClick(Sender: TObject);
     procedure MenuSheetSaveClick(Sender: TObject);
     procedure PopupQueryOpenClick(Sender: TObject);
@@ -62,6 +69,8 @@ implementation
 
 { TForm1 }
 
+const SVLAD_RELEASE = 1;
+
 function svlad_alert(L: Plua_state): Integer; cdecl;
 var
   text : String;
@@ -69,6 +78,33 @@ begin
   text := lua_tostring(L, -1);
   ShowMessage(text);
   Result:=0;
+end;
+
+function svlad_confirm(L: Plua_state): Integer; cdecl;
+var
+  Question : String;
+  Confirmed : Integer;
+begin
+  Question := lua_tostring(L, -1);
+  Confirmed := MessageDlg('Svlad', Question, mtConfirmation, [mbOK, mbCancel], 0);
+  if Confirmed=mrOK then
+    lua_pushboolean(L,true)
+  else
+    lua_pushboolean(L,false);
+  Result := 1;
+end;
+
+function svlad_prompt(L: Plua_state): Integer; cdecl;
+var
+  Prompt : String;
+  Default : String;
+  Reply : String;
+begin
+  Prompt := lua_tostring(L, -2);
+  Default := lua_tostring(L, -1);
+  Reply := InputBox('Svlad',Prompt,Default);
+  lua_pushstring(L, Reply);
+  Result := 1;
 end;
 
 function svlad_get(L: Plua_state): Integer; cdecl;
@@ -107,12 +143,20 @@ begin
   Result := 0;
 end;
 
-procedure lua_help_register(L: PLua_state; table: String; field: String; fun: lua_CFunction);
+procedure LuaH_table_set_function(L: Plua_state; field: string; fun: lua_CFunction);
 begin
-  lua_getglobal(L, PChar(table));
   lua_pushcfunction(L, fun);
   lua_setfield(L, -2, PChar(field));
-  lua_pop(L,1);
+end;
+
+procedure LuaH_error_handle(L: Plua_state);
+var
+  msg : String;
+const
+  NL = #10#13;
+begin
+  msg := lua_tostring(L,-1);
+  ShowMessage('Lua error:' + NL + msg);
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
@@ -120,11 +164,13 @@ begin
   L := luaL_newstate(); (* 5.2 change *)
   luaL_openlibs(L);
   lua_newtable(L);
+  LuaH_table_set_function(L, 'alert', @svlad_alert);
+  LuaH_table_set_function(L, 'confirm', @svlad_confirm);
+  LuaH_table_set_function(L, 'prompt', @svlad_prompt);
+  LuaH_table_set_function(L, 'get', @svlad_get);
+  LuaH_table_set_function(L, 'set', @svlad_set);
+  LuaH_table_set_function(L, 'clean', @svlad_clean);
   lua_setglobal(L, 'svlad');
-  lua_help_register(L, 'svlad', 'alert', @svlad_alert);
-  lua_help_register(L, 'svlad', 'get', @svlad_get);
-  lua_help_register(L, 'svlad', 'set', @svlad_set);
-  lua_help_register(L, 'svlad', 'clean', @svlad_clean);
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -146,6 +192,24 @@ begin
   Grid.Clean;
   maxR := 0;
   maxC := 0;
+end;
+
+procedure TForm1.MenuSheetFixedColClick(Sender: TObject);
+begin
+  MenuSheetFixedCol.checked := not MenuSheetFixedCol.checked;
+  if (MenuSheetFixedCol.Checked) then
+    Form1.Grid.FixedCols:=1
+  else
+    Form1.Grid.FixedCols:=0;
+end;
+
+procedure TForm1.MenuSheetFixedRowClick(Sender: TObject);
+begin
+  MenuSheetFixedRow.checked := not MenuSheetFixedRow.checked;
+  if (MenuSheetFixedRow.Checked) then
+    Form1.Grid.FixedRows:=1
+  else
+    Form1.Grid.FixedRows:=0;
 end;
 
 procedure TForm1.MenuSheetOpenClick(Sender: TObject);
@@ -212,7 +276,7 @@ procedure TForm1.PopupQueryOpenClick(Sender: TObject);
 begin
   if OpenDialogQuery.Execute then
   begin
-    Query.Lines.SaveToFile(OpenDialogQuery.FileName);
+    Query.Lines.LoadFromFile(OpenDialogQuery.FileName);
   end;
 end;
 
@@ -245,6 +309,10 @@ begin
   end;
 end;
 
+procedure TForm1.MenuAboutClick(Sender: TObject);
+begin
+  ShowMessage('Svlad2 release ' + IntToStr(SVLAD_RELEASE) + ' by Severák');
+end;
 
 end.
 
