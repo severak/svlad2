@@ -15,9 +15,13 @@ type
   TForm1 = class(TForm)
     MainMenu: TMainMenu;
     MenuAbout: TMenuItem;
+    MenuActions: TMenuItem;
     MenuSheetFixedCol: TMenuItem;
     MenuSheetSeparator: TMenuItem;
     MenuSheetFixedRow: TMenuItem;
+    PairSplitter1: TPairSplitter;
+    PairSplitterSide1: TPairSplitterSide;
+    PairSplitterSide2: TPairSplitterSide;
     PopupQueryRun: TMenuItem;
     PopupQueryClear: TMenuItem;
     MenuFile: TMenuItem;
@@ -53,6 +57,12 @@ type
     { public declarations }
   end;
 
+  TLuaMenuItem = class(TMenuItem)
+    public
+      LuaFunctionName : String;
+      procedure Clicked(Sender : TObject);
+  end;
+
 var
   Form1: TForm1;
   L: Plua_State;
@@ -70,6 +80,18 @@ implementation
 { TForm1 }
 
 const SVLAD_RELEASE = 1;
+
+procedure g_checkBounds(L : PLua_state; maxR : Integer; maxC: Integer);
+var
+  pole : array[1..2] of Integer;
+begin
+  if ((maxR>Form1.Grid.RowCount) OR (maxC>Form1.Grid.ColCount)) then
+  begin
+    pole[1]:=maxR;
+    pole[2]:=maxC;
+    luaL_error(L,'Grid coordinates [%f,%f] out of bounds!',pole);
+  end;
+end;
 
 function svlad_alert(L: Plua_state): Integer; cdecl;
 var
@@ -114,6 +136,7 @@ var
 begin
   row := lua_tointeger(L, -2);
   col := lua_tointeger(L, -1);
+  g_checkBounds(L, row, col);
   text := Form1.Grid.Cells[col,row];
   lua_pushstring(L, text);
   Result := 1;
@@ -159,7 +182,14 @@ begin
   ShowMessage('Lua error:' + NL + msg);
 end;
 
+procedure TluaMenuItem.Clicked(Sender: TObject);
+begin
+
+end;
+
 procedure TForm1.FormCreate(Sender: TObject);
+var
+  nitem : TLuaMenuItem;
 begin
   L := luaL_newstate(); (* 5.2 change *)
   luaL_openlibs(L);
@@ -170,6 +200,12 @@ begin
   LuaH_table_set_function(L, 'get', @svlad_get);
   LuaH_table_set_function(L, 'set', @svlad_set);
   LuaH_table_set_function(L, 'clean', @svlad_clean);
+  nitem := TLuaMenuItem.Create(Form1.MenuActions);
+  nitem.LuaFunctionName:='AAAAA!';
+  nitem.Caption:='Bzzzz';
+  nitem.OnClick := @nitem.Clicked;
+  Form1.MenuActions.Add(nitem);
+  Form1.MenuActions.Enabled := true;
   lua_setglobal(L, 'svlad');
 end;
 
