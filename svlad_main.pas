@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Menus, Grids, PairSplitter, lua52, CSVDocument;
+  Menus, Grids, PairSplitter, CSVDocument, lua52;
 
 type
 
@@ -82,14 +82,10 @@ implementation
 const SVLAD_RELEASE = 1;
 
 procedure g_checkBounds(L : PLua_state; maxR : Integer; maxC: Integer);
-var
-  pole : array[1..2] of Integer;
 begin
   if ((maxR>Form1.Grid.RowCount) OR (maxC>Form1.Grid.ColCount)) then
   begin
-    pole[1]:=maxR;
-    pole[2]:=maxC;
-    luaL_error(L,'Grid coordinates [%f,%f] out of bounds!',pole);
+    luaL_error(L,'Grid coordinates [%f,%f] out of bounds!',[maxR,maxC]);
   end;
 end;
 
@@ -166,6 +162,26 @@ begin
   Result := 0;
 end;
 
+function svlad_menu_add(L: Plua_state): Integer; cdecl;
+var
+  item : TLuaMenuItem;
+  caption : String;
+  functionName : String;
+  index : Integer;
+begin
+  caption := lua_tostring(L, -2);
+  functionName := lua_tostring(L, -1);
+  item := TLuaMenuItem.Create(Form1.MenuActions);
+  item.caption := caption;
+  item.LuaFunctionName := functionName;
+  item.OnClick:= @item.Clicked;
+  Form1.MenuActions.Add(item);
+  index := Form1.MenuActions.IndexOf(item);
+  Form1.MenuActions.Enabled:=true;
+  lua_pushinteger(L, index);
+  Result := 1;
+end;
+
 procedure LuaH_table_set_function(L: Plua_state; field: string; fun: lua_CFunction);
 begin
   lua_pushcfunction(L, fun);
@@ -184,7 +200,11 @@ end;
 
 procedure TluaMenuItem.Clicked(Sender: TObject);
 begin
-
+  lua_getglobal(L, PChar(LuaFunctionName));
+  if lua_pcall(L,0,0,0)<>LUA_OK then
+  begin
+    LuaH_error_handle(L);
+  end;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
@@ -200,12 +220,7 @@ begin
   LuaH_table_set_function(L, 'get', @svlad_get);
   LuaH_table_set_function(L, 'set', @svlad_set);
   LuaH_table_set_function(L, 'clean', @svlad_clean);
-  nitem := TLuaMenuItem.Create(Form1.MenuActions);
-  nitem.LuaFunctionName:='AAAAA!';
-  nitem.Caption:='Bzzzz';
-  nitem.OnClick := @nitem.Clicked;
-  Form1.MenuActions.Add(nitem);
-  Form1.MenuActions.Enabled := true;
+  LuaH_table_set_function(L, 'menu_add', @svlad_menu_add);
   lua_setglobal(L, 'svlad');
 end;
 
@@ -351,4 +366,4 @@ begin
 end;
 
 end.
-
+

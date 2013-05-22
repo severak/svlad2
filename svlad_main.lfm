@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 147
   Width = 500
   Caption = 'Svlad'
-  ClientHeight = 380
+  ClientHeight = 381
   ClientWidth = 500
   Menu = MainMenu
   OnCreate = FormCreate
@@ -13,7 +13,7 @@ object Form1: TForm1
   object PairSplitter1: TPairSplitter
     Cursor = crVSplit
     Left = 0
-    Height = 380
+    Height = 381
     Top = 0
     Width = 500
     Align = alClient
@@ -54,7 +54,7 @@ object Form1: TForm1
     object PairSplitterSide2: TPairSplitterSide
       Cursor = crArrow
       Left = 0
-      Height = 125
+      Height = 126
       Top = 255
       Width = 500
       ChildSizing.EnlargeHorizontal = crsScaleChilds
@@ -62,10 +62,10 @@ object Form1: TForm1
       ChildSizing.ShrinkHorizontal = crsScaleChilds
       ChildSizing.ShrinkVertical = crsScaleChilds
       ClientWidth = 500
-      ClientHeight = 125
+      ClientHeight = 126
       object Query: TMemo
         Left = 2
-        Height = 121
+        Height = 122
         Top = 2
         Width = 496
         Align = alClient
@@ -164,4 +164,4 @@ object Form1: TForm1
     left = 304
     top = 330
   end
-end
+end
