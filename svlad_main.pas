@@ -63,6 +63,11 @@ type
       procedure Clicked(Sender : TObject);
   end;
 
+  TSvladCoords = record
+    row : Integer;
+    col : Integer;
+  end;
+
 var
   Form1: TForm1;
   L: Plua_State;
@@ -81,12 +86,56 @@ implementation
 
 const SVLAD_RELEASE = 1;
 
+function h_coords(row : Integer; col : Integer) : TSvladCoords;
+begin
+  Result.row := row;
+  Result.col := col;
+end;
+
 procedure g_checkBounds(L : PLua_state; maxR : Integer; maxC: Integer);
 begin
   if ((maxR>Form1.Grid.RowCount) OR (maxC>Form1.Grid.ColCount)) then
   begin
     luaL_error(L,'Grid coordinates [%f,%f] out of bounds!',[maxR,maxC]);
   end;
+end;
+
+procedure g_clean();
+begin
+  Form1.Grid.Clean;
+  Form1.Grid.AutoSizeColumns;
+  maxR := 0;
+  maxC := 0;
+end;
+
+procedure g_set_max(ARow : Integer; ACol : Integer);
+begin
+  if ARow > maxR then
+    maxR := ARow;
+  if ACol > maxC then
+    maxC := ACol;
+end;
+
+procedure g_update_max();
+var
+  r, c, maxRC, maxCC, z : Integer;
+begin
+  (* if Form1.Grid.Cells[maxC,maxR]='' then
+  begin
+    maxRC := maxR;
+    maxCC := maxC;
+    for r := maxR downto 0 do
+    begin
+      for z := maxCC downto 0 do
+      begin
+        if Form1.Grid.Cells[z,r]<>'' then
+        begin
+          maxR := r;
+          break;
+        end;
+      end;
+    end;
+  end; *)
 end;
 
 function svlad_alert(L: Plua_state): Integer; cdecl;
@@ -146,19 +195,30 @@ begin
   row := lua_tointeger(L, -3);
   col := lua_tointeger(L, -2);
   text := lua_tostring(L, -1);
+  g_checkBounds(L, row, col);
   Form1.Grid.Cells[col,row] := text;
-  if row > maxR then
-    maxR := row;
-  if col > maxC then
-    maxC := col;
+  g_set_max(row,col);
   Result := 0;
+end;
+
+function svlad_get_max(L: Plua_state): Integer; cdecl;
+begin
+  g_update_max();
+  lua_pushinteger(L, maxR);
+  lua_pushinteger(L, maxC);
+  Result := 2;
+end;
+
+function svlad_get_bounds(L: Plua_state): Integer; cdecl;
+begin
+  lua_pushinteger(L, Form1.Grid.RowCount);
+  lua_pushinteger(L, Form1.Grid.ColCount);
+  Result := 2;
 end;
 
 function svlad_clean(L: Plua_state): Integer; cdecl;
 begin
-  Form1.Grid.Clean;
-  maxR := 0;
-  maxC := 0;
+  g_clean();
   Result := 0;
 end;
 
@@ -167,7 +227,6 @@ var
   item : TLuaMenuItem;
   caption : String;
   functionName : String;
-  index : Integer;
 begin
   caption := lua_tostring(L, -2);
   functionName := lua_tostring(L, -1);
@@ -176,10 +235,15 @@ begin
   item.LuaFunctionName := functionName;
   item.OnClick:= @item.Clicked;
   Form1.MenuActions.Add(item);
-  index := Form1.MenuActions.IndexOf(item);
   Form1.MenuActions.Enabled:=true;
-  lua_pushinteger(L, index);
-  Result := 1;
+  Result := 0;
+end;
+
+function svlad_menu_clean(L: Plua_state): Integer; cdecl;
+begin
+  Form1.MenuActions.Clear;
+  Form1.MenuActions.Enabled  := false;
+  Result := 0;
 end;
 
 procedure LuaH_table_set_function(L: Plua_state; field: string; fun: lua_CFunction);
@@ -208,8 +272,6 @@ begin
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
-var
-  nitem : TLuaMenuItem;
 begin
   L := luaL_newstate(); (* 5.2 change *)
   luaL_openlibs(L);
@@ -219,8 +281,11 @@ begin
   LuaH_table_set_function(L, 'prompt', @svlad_prompt);
   LuaH_table_set_function(L, 'get', @svlad_get);
   LuaH_table_set_function(L, 'set', @svlad_set);
+  LuaH_table_set_function(L, 'get_max', @svlad_get_max);
+  LuaH_table_set_function(L, 'get_bounds', @svlad_get_bounds);
   LuaH_table_set_function(L, 'clean', @svlad_clean);
   LuaH_table_set_function(L, 'menu_add', @svlad_menu_add);
+  LuaH_table_set_function(L, 'menu_clean', @svlad_menu_clean);
   lua_setglobal(L, 'svlad');
 end;
 
@@ -232,17 +297,12 @@ end;
 procedure TForm1.GridSetEditText(Sender: TObject; ACol, ARow: integer;
   const Value: string);
 begin
-  if ARow > maxR then
-    maxR := ARow;
-  if ACol > maxC then
-    maxC := ACol;
+  g_set_max(ARow, ACol);
 end;
 
 procedure TForm1.MenuSheetClearClick(Sender: TObject);
 begin
-  Grid.Clean;
-  maxR := 0;
-  maxC := 0;
+  g_clean();
 end;
 
 procedure TForm1.MenuSheetFixedColClick(Sender: TObject);
@@ -334,15 +394,13 @@ end;
 procedure TForm1.PopupQueryRunClick(Sender: TObject);
 var
   code: PChar;
-  msg: PChar;
 begin
   code := Query.Lines.GetText;
   if Length(code)>0 then
   begin
-    if luaL_dostring(L, code)<>0 then
+    if luaL_dostring(L, code)<>LUA_OK then
     begin
-      msg := lua_tostring(L,-1);
-      ShowMessage('Lua error: ' + msg);
+      LuaH_error_handle(L);
     end;
   end;
 end;
