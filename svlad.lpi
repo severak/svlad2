@@ -73,7 +73,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="2">
+    <Units Count="3">
       <Unit0>
         <Filename Value="svlad.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -87,6 +87,14 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="svlad_main"/>
       </Unit1>
+      <Unit2>
+        <Filename Value="svladabout.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FormSvladAbout"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="SvladAbout"/>
+      </Unit2>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

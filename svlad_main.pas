@@ -6,16 +6,20 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Menus, Grids, PairSplitter, CSVDocument, lua52;
+  Menus, Grids, PairSplitter, CSVDocument, lua52, SvladAbout;
 
 type
 
   { TForm1 }
 
   TForm1 = class(TForm)
+    FontDialog: TFontDialog;
     MainMenu: TMainMenu;
     MenuAbout: TMenuItem;
     MenuActions: TMenuItem;
+    MenuSheetAutosize: TMenuItem;
+    MenuSheetFont: TMenuItem;
+    MenuSheetSeparatorII: TMenuItem;
     MenuSheetFixedCol: TMenuItem;
     MenuSheetSeparator: TMenuItem;
     MenuSheetFixedRow: TMenuItem;
@@ -42,9 +46,11 @@ type
     procedure GridSetEditText(Sender: TObject; ACol, ARow: integer;
       const Value: string);
     procedure MenuAboutClick(Sender: TObject);
+    procedure MenuSheetAutosizeClick(Sender: TObject);
     procedure MenuSheetClearClick(Sender: TObject);
     procedure MenuSheetFixedColClick(Sender: TObject);
     procedure MenuSheetFixedRowClick(Sender: TObject);
+    procedure MenuSheetFontClick(Sender: TObject);
     procedure MenuSheetOpenClick(Sender: TObject);
     procedure MenuSheetSaveClick(Sender: TObject);
     procedure PopupQueryOpenClick(Sender: TObject);
@@ -58,14 +64,14 @@ type
   end;
 
   TLuaMenuItem = class(TMenuItem)
-    public
-      LuaFunctionName : String;
-      procedure Clicked(Sender : TObject);
+  public
+    LuaFunctionName: string;
+    procedure Clicked(Sender: TObject);
   end;
 
   TSvladCoords = record
-    row : Integer;
-    col : Integer;
+    row: integer;
+    col: integer;
   end;
 
 var
@@ -84,19 +90,31 @@ implementation
 
 { TForm1 }
 
-const SVLAD_RELEASE = 1;
+const
+  SVLAD_RELEASE = 1;
 
-function h_coords(row : Integer; col : Integer) : TSvladCoords;
+function h_coords(row: integer; col: integer): TSvladCoords;
 begin
   Result.row := row;
   Result.col := col;
 end;
 
-procedure g_checkBounds(L : PLua_state; maxR : Integer; maxC: Integer);
+function h_confirm(Question: string): boolean;
+var
+  Confirmed: integer;
 begin
-  if ((maxR>Form1.Grid.RowCount) OR (maxC>Form1.Grid.ColCount)) then
+  Confirmed := MessageDlg('Confirm', Question, mtConfirmation, [mbOK, mbCancel], 0);
+  if Confirmed = mrOk then
+    Result := True
+  else
+    Result := False;
+end;
+
+procedure g_checkBounds(L: PLua_state; maxR: integer; maxC: integer);
+begin
+  if ((maxR > Form1.Grid.RowCount) or (maxC > Form1.Grid.ColCount)) then
   begin
-    luaL_error(L,'Grid coordinates [%f,%f] out of bounds!',[maxR,maxC]);
+    luaL_error(L, 'Grid coordinates [%f,%f] out of bounds!', [maxR, maxC]);
   end;
 end;
 
@@ -108,7 +126,7 @@ begin
   maxC := 0;
 end;
 
-procedure g_set_max(ARow : Integer; ACol : Integer);
+procedure g_set_max(ARow: integer; ACol: integer);
 begin
   if ARow > maxR then
     maxR := ARow;
@@ -118,90 +136,107 @@ end;
 
 procedure g_update_max();
 var
-  r, c, maxRC, maxCC, z : Integer;
+  row, col, maxRC, maxCC, z: integer;
 begin
-  (* if Form1.Grid.Cells[maxC,maxR]='' then
+  if Trim(Form1.Grid.Cells[maxC,maxR])='' then
   begin
-    maxRC := maxR;
+    (*maxRC := maxR;
     maxCC := maxC;
-    for r := maxR downto 0 do
+    for row := maxR downto 0 do
     begin
-      for z := maxCC downto 0 do
+      for col := maxC downto 0 do
       begin
-        if Form1.Grid.Cells[z,r]<>'' then
+        if Trim(Form1.Grid.Cells[col,row])<>'' then
         begin
-          maxR := r;
+          maxR := row;
+          maxC := col;
           break;
         end;
       end;
-    end;
-  end; *)
+    end; *)
+  end;
 end;
 
-function svlad_alert(L: Plua_state): Integer; cdecl;
+function svlad_alert(L: Plua_state): integer; cdecl;
 var
-  text : String;
+  Text: string;
 begin
-  text := lua_tostring(L, -1);
-  ShowMessage(text);
-  Result:=0;
+  Text := lua_tostring(L, -1);
+  ShowMessage(Text);
+  Result := 0;
 end;
 
-function svlad_confirm(L: Plua_state): Integer; cdecl;
+function svlad_confirm(L: Plua_state): integer; cdecl;
 var
-  Question : String;
-  Confirmed : Integer;
+  Question: string;
+  Confirmed: boolean;
 begin
   Question := lua_tostring(L, -1);
-  Confirmed := MessageDlg('Svlad', Question, mtConfirmation, [mbOK, mbCancel], 0);
-  if Confirmed=mrOK then
-    lua_pushboolean(L,true)
-  else
-    lua_pushboolean(L,false);
+  Confirmed := h_confirm(Question);
+  lua_pushboolean(L, Confirmed);
   Result := 1;
 end;
 
-function svlad_prompt(L: Plua_state): Integer; cdecl;
+function svlad_prompt(L: Plua_state): integer; cdecl;
 var
-  Prompt : String;
-  Default : String;
-  Reply : String;
+  Prompt: string;
+  Default: string;
+  Reply: string;
 begin
   Prompt := lua_tostring(L, -2);
   Default := lua_tostring(L, -1);
-  Reply := InputBox('Svlad',Prompt,Default);
+  Reply := InputBox('Svlad', Prompt, Default);
   lua_pushstring(L, Reply);
   Result := 1;
 end;
 
-function svlad_get(L: Plua_state): Integer; cdecl;
+function svlad_get(L: Plua_state): integer; cdecl;
 var
-  row, col : Integer;
-  text : String;
+  row, col: integer;
+  Text: string;
 begin
   row := lua_tointeger(L, -2);
   col := lua_tointeger(L, -1);
   g_checkBounds(L, row, col);
-  text := Form1.Grid.Cells[col,row];
-  lua_pushstring(L, text);
+  Text := Form1.Grid.Cells[col, row];
+  lua_pushstring(L, Text);
   Result := 1;
 end;
 
-function svlad_set(L: Plua_state): Integer; cdecl;
+function svlad_focus(L: Plua_state): integer; cdecl;
 var
-  row, col : Integer;
-  text : String;
+  row, col: integer;
 begin
-  row := lua_tointeger(L, -3);
-  col := lua_tointeger(L, -2);
-  text := lua_tostring(L, -1);
+  row := lua_tointeger(L, -2);
+  col := lua_tointeger(L, -1);
   g_checkBounds(L, row, col);
-  Form1.Grid.Cells[col,row] := text;
-  g_set_max(row,col);
+  Form1.Grid.row := row;
+  Form1.Grid.col := col;
+  Form1.Grid.SetFocus;
   Result := 0;
 end;
 
-function svlad_get_max(L: Plua_state): Integer; cdecl;
+function svlad_set(L: Plua_state): integer; cdecl;
+var
+  row, col: integer;
+  Text: string;
+begin
+  row := lua_tointeger(L, -3);
+  col := lua_tointeger(L, -2);
+  Text := lua_tostring(L, -1);
+  g_checkBounds(L, row, col);
+  Form1.Grid.Cells[col, row] := Text;
+  g_set_max(row, col);
+  Result := 0;
+end;
+
+function svlad_autosize(L: Plua_state): integer; cdecl;
+begin
+  Form1.Grid.AutoSizeColumns;
+  Result := 0;
+end;
+
+function svlad_get_max(L: Plua_state): integer; cdecl;
 begin
   g_update_max();
   lua_pushinteger(L, maxR);
@@ -209,40 +244,40 @@ begin
   Result := 2;
 end;
 
-function svlad_get_bounds(L: Plua_state): Integer; cdecl;
+function svlad_get_bounds(L: Plua_state): integer; cdecl;
 begin
   lua_pushinteger(L, Form1.Grid.RowCount);
   lua_pushinteger(L, Form1.Grid.ColCount);
   Result := 2;
 end;
 
-function svlad_clean(L: Plua_state): Integer; cdecl;
+function svlad_clean(L: Plua_state): integer; cdecl;
 begin
   g_clean();
   Result := 0;
 end;
 
-function svlad_menu_add(L: Plua_state): Integer; cdecl;
+function svlad_menu_add(L: Plua_state): integer; cdecl;
 var
-  item : TLuaMenuItem;
-  caption : String;
-  functionName : String;
+  item: TLuaMenuItem;
+  Caption: string;
+  functionName: string;
 begin
-  caption := lua_tostring(L, -2);
+  Caption := lua_tostring(L, -2);
   functionName := lua_tostring(L, -1);
   item := TLuaMenuItem.Create(Form1.MenuActions);
-  item.caption := caption;
+  item.Caption := Caption;
   item.LuaFunctionName := functionName;
-  item.OnClick:= @item.Clicked;
+  item.OnClick := @item.Clicked;
   Form1.MenuActions.Add(item);
-  Form1.MenuActions.Enabled:=true;
+  Form1.MenuActions.Enabled := True;
   Result := 0;
 end;
 
-function svlad_menu_clean(L: Plua_state): Integer; cdecl;
+function svlad_menu_clean(L: Plua_state): integer; cdecl;
 begin
   Form1.MenuActions.Clear;
-  Form1.MenuActions.Enabled  := false;
+  Form1.MenuActions.Enabled := False;
   Result := 0;
 end;
 
@@ -254,18 +289,18 @@ end;
 
 procedure LuaH_error_handle(L: Plua_state);
 var
-  msg : String;
+  msg: string;
 const
   NL = #10#13;
 begin
-  msg := lua_tostring(L,-1);
+  msg := lua_tostring(L, -1);
   ShowMessage('Lua error:' + NL + msg);
 end;
 
 procedure TluaMenuItem.Clicked(Sender: TObject);
 begin
   lua_getglobal(L, PChar(LuaFunctionName));
-  if lua_pcall(L,0,0,0)<>LUA_OK then
+  if lua_pcall(L, 0, 0, 0) <> LUA_OK then
   begin
     LuaH_error_handle(L);
   end;
@@ -281,6 +316,8 @@ begin
   LuaH_table_set_function(L, 'prompt', @svlad_prompt);
   LuaH_table_set_function(L, 'get', @svlad_get);
   LuaH_table_set_function(L, 'set', @svlad_set);
+  LuaH_table_set_function(L, 'focus', @svlad_focus);
+  LuaH_table_set_function(L, 'autosize', @svlad_autosize);
   LuaH_table_set_function(L, 'get_max', @svlad_get_max);
   LuaH_table_set_function(L, 'get_bounds', @svlad_get_bounds);
   LuaH_table_set_function(L, 'clean', @svlad_clean);
@@ -302,48 +339,62 @@ end;
 
 procedure TForm1.MenuSheetClearClick(Sender: TObject);
 begin
-  g_clean();
+  if h_confirm('Really want to clean sheet?') then
+    g_clean();
 end;
 
 procedure TForm1.MenuSheetFixedColClick(Sender: TObject);
 begin
-  MenuSheetFixedCol.checked := not MenuSheetFixedCol.checked;
+  MenuSheetFixedCol.Checked := not MenuSheetFixedCol.Checked;
   if (MenuSheetFixedCol.Checked) then
-    Form1.Grid.FixedCols:=1
+    Form1.Grid.FixedCols := 1
   else
-    Form1.Grid.FixedCols:=0;
+    Form1.Grid.FixedCols := 0;
 end;
 
 procedure TForm1.MenuSheetFixedRowClick(Sender: TObject);
 begin
-  MenuSheetFixedRow.checked := not MenuSheetFixedRow.checked;
+  MenuSheetFixedRow.Checked := not MenuSheetFixedRow.Checked;
   if (MenuSheetFixedRow.Checked) then
-    Form1.Grid.FixedRows:=1
+    Form1.Grid.FixedRows := 1
   else
-    Form1.Grid.FixedRows:=0;
+    Form1.Grid.FixedRows := 0;
+end;
+
+procedure TForm1.MenuSheetFontClick(Sender: TObject);
+begin
+  if FontDialog.Execute then
+  begin
+    Grid.Font.Name := FontDialog.Font.Name;
+    Grid.Font.Style := FontDialog.Font.Style;
+    Grid.Font.Size := FontDialog.Font.Size;
+    Grid.Font.Color := FontDialog.Font.Color;
+  end;
 end;
 
 procedure TForm1.MenuSheetOpenClick(Sender: TObject);
 var
   Parser: TCSVParser;
-  FileStream : TFileStream;
+  FileStream: TFileStream;
 begin
   if OpenDialogTable.Execute then
   begin
     maxR := 0;
     maxC := 0;
     Grid.Clean;
-    Parser := TCSVParser.create;
-    if not(FileExistsUTF8(OpenDialogTable.FileName)) then exit;
-    Parser:=TCSVParser.Create;
-    FileStream := TFileStream.Create(OpenDialogTable.FileName, fmOpenRead+fmShareDenyWrite);
+    Parser := TCSVParser.Create;
+    if not (FileExistsUTF8(OpenDialogTable.FileName)) then
+      exit;
+    Parser := TCSVParser.Create;
+    FileStream := TFileStream.Create(OpenDialogTable.FileName,
+      fmOpenRead + fmShareDenyWrite);
     try
-      Parser.Delimiter:=TAB;
+      Parser.Delimiter := TAB;
       Parser.SetSource(FileStream);
       Grid.BeginUpdate;
       while Parser.ParseNextCell do
       begin
-        Grid.Cells[Parser.CurrentCol,Parser.CurrentRow] := Parser.CurrentCellText;
+        Grid.Cells[Parser.CurrentCol, Parser.CurrentRow] := Parser.CurrentCellText;
         maxR := Parser.CurrentRow;
         maxC := Parser.CurrentCol;
       end;
@@ -357,22 +408,22 @@ end;
 
 procedure TForm1.MenuSheetSaveClick(Sender: TObject);
 var
-  Builder : TCSVBuilder;
-  FileStream : TFileStream;
-  r, c : Integer;
+  Builder: TCSVBuilder;
+  FileStream: TFileStream;
+  r, c: integer;
 begin
   if SaveDialogTable.Execute then
   begin
     Builder := TCSVBuilder.Create;
-    FileStream := TFileStream.Create(SaveDialogTable.FileName, fmOpenWrite+fmCreate);
+    FileStream := TFileStream.Create(SaveDialogTable.FileName, fmOpenWrite + fmCreate);
     try
-      Builder.Delimiter:=TAB;
+      Builder.Delimiter := TAB;
       Builder.SetOutput(FileStream);
-      for r:=0 to maxR do
+      for r := 0 to maxR do
       begin
-        for c:=0 to maxC do
+        for c := 0 to maxC do
         begin
-          Builder.AppendCell(Grid.Cells[c,r])
+          Builder.AppendCell(Grid.Cells[c, r]);
         end;
         Builder.AppendRow;
       end;
@@ -396,9 +447,9 @@ var
   code: PChar;
 begin
   code := Query.Lines.GetText;
-  if Length(code)>0 then
+  if Length(code) > 0 then
   begin
-    if luaL_dostring(L, code)<>LUA_OK then
+    if luaL_dostring(L, code) <> LUA_OK then
     begin
       LuaH_error_handle(L);
     end;
@@ -407,7 +458,8 @@ end;
 
 procedure TForm1.PopupQueryClearClick(Sender: TObject);
 begin
-  Query.Clear;
+  if h_confirm('Really want to clean query?') then
+    Query.Clear;
 end;
 
 procedure TForm1.PopupQuerySaveClick(Sender: TObject);
@@ -420,8 +472,12 @@ end;
 
 procedure TForm1.MenuAboutClick(Sender: TObject);
 begin
-  ShowMessage('Svlad2 release ' + IntToStr(SVLAD_RELEASE) + ' by Severák');
+  SvladAbout.FormSvladAbout.ShowModal;
 end;
 
-end.
-
+procedure TForm1.MenuSheetAutosizeClick(Sender: TObject);
+begin
+  Grid.AutoSizeColumns;
+end;
+
+end.

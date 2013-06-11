@@ -129,6 +129,17 @@ object Form1: TForm1
         Caption = 'Fixed col'
         OnClick = MenuSheetFixedColClick
       end
+      object MenuSheetSeparatorII: TMenuItem
+        Caption = '-'
+      end
+      object MenuSheetFont: TMenuItem
+        Caption = 'Set font'
+        OnClick = MenuSheetFontClick
+      end
+      object MenuSheetAutosize: TMenuItem
+        Caption = 'Autosize'
+        OnClick = MenuSheetAutosizeClick
+      end
     end
     object MenuActions: TMenuItem
       Caption = 'Actions'
@@ -163,5 +174,11 @@ object Form1: TForm1
     Options = [ofOverwritePrompt, ofEnableSizing, ofViewDetail]
     left = 304
     top = 330
+  end
+  object FontDialog: TFontDialog
+    MinFontSize = 0
+    MaxFontSize = 0
+    left = 269
+    top = 170
   end
 end
