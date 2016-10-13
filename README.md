@@ -1,9 +1,12 @@
 svlad2
 ======
 
+[![forthebadge](http://forthebadge.com/images/badges/designed-in-ms-paint.svg)](http://forthebadge.com)
+
 Simple table editor scriptable with Lua.
 
 author: Severák
+
 license: MIT
 
 ## API reference
