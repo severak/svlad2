@@ -20,8 +20,8 @@ license: MIT
  - `row, col = svlad.get_max()` - get coordinate of bottom-right corner of filled part of grid
  - `rows, cols = svlad.get_bounds()` - get bounds of table
  - `svlad.clean()` - clean grid contents
- - `svlad.add_menu(label, function_name)` - adds item to `Actions` menu
- - `svlad.clean_menu()` - clean `Actions` menu
+ - `svlad.menu_add(label, function_name)` - adds item to `Actions` menu
+ - `svlad.menu_clean()` - clean `Actions` menu
 
 
 ---
