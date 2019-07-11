@@ -26,4 +26,4 @@ license: MIT
 
 ---
 
-this project was abandonned, use [CSVPad](http://www.trustfm.net/GeneralTools/CSVpad.php)
+this project was abandoned, use [CSVPad](http://www.trustfm.net/GeneralTools/CSVpad.php)
